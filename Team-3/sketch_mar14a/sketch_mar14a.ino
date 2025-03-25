@@ -140,7 +140,7 @@ int getDecision(float right, float left, float front)
 
   if(right <= 18)
   {
-    if(front <= 20 && left > 15)//turn left
+    if(front <= 15 && left > 15)//turn left
     {
       return 3;
     }
@@ -266,7 +266,7 @@ void loop() {
     }
 
     timer = millis();
-      while(millis() - timer < 700)
+      while(millis() - timer < 600)
       {
         goForwardR(10);
         goForwardL(10);
@@ -314,7 +314,7 @@ void loop() {
 
     case 4: //go back
     timer = millis();
-    while(millis() - timer < 1700)
+    while(millis() - timer < 1400)
     {
       goForwardR(0);
       goForwardL(0);
@@ -337,10 +337,10 @@ void loop() {
     
     frontSonar = sonar(FRONT_SONAR);
 
-    if(frontSonar > 8)
+    if(frontSonar > 20)
     {
       timer = millis();
-      while(millis() - timer < 600)
+      while(millis() - timer < 1000)
       {
         goForwardR(10);
         goForwardL(10);
@@ -353,16 +353,13 @@ void loop() {
     {
       _countFractionR = 0;
       _countFractionL = 0;
-      while(_countFractionR < 9 && _countFractionL < 9)
+      while(_countFractionR < turn90)
       {
+        goForwardR(20);
         rotationsR();
-        rotationsL();
-        goForwardR(10);
-        rotationsR();
-        rotationsL();
         goForwardL(0);
         goBackwardR(0);
-        goBackwardL(10);
+        goBackwardL(0);
       }
     }
     
