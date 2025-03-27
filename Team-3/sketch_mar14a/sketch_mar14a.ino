@@ -313,54 +313,26 @@ void loop() {
     break;
 
     case 4: //go back
-    timer = millis();
-    while(millis() - timer < 1400)
-    {
-      goForwardR(0);
-      goForwardL(0);
-      goBackwardR(10);
-      goBackwardL(10);
-    }
-
     _countFractionR = 0;
     _countFractionL = 0;
     while(_countFractionL < turn90)
     {
       goForwardR(0);
-      rotationsR();
       rotationsL();
       goForwardL(0);
       goBackwardR(0);
       goBackwardL(20);
     }
 
-    
-    frontSonar = sonar(FRONT_SONAR);
-
-    if(frontSonar > 20)
+    _countFractionR = 0;
+    _countFractionL = 0;
+    while(_countFractionR < turn90)
     {
-      timer = millis();
-      while(millis() - timer < 1000)
-      {
-        goForwardR(10);
-        goForwardL(10);
-        goBackwardR(0);
-        goBackwardL(0);
-      }
-    }
-
-    else
-    {
-      _countFractionR = 0;
-      _countFractionL = 0;
-      while(_countFractionR < turn90)
-      {
-        goForwardR(20);
-        rotationsR();
-        goForwardL(0);
-        goBackwardR(0);
-        goBackwardL(0);
-      }
+      goForwardR(20);
+      rotationsR();
+      goForwardL(0);
+      goBackwardR(0);
+      goBackwardL(0);
     }
     
     break;
