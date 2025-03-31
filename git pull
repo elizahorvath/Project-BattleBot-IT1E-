@@ -1,0 +1,37 @@
+[33mcommit 0250e12e85afe64f4f37ebda5b8a582dff8b6388[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mteam3-stefan[m[33m)[m
+Author: StefanBryda <stefan.bryda@student.nhlstenden.com>
+Date:   Thu Mar 27 13:05:30 2025 +0100
+
+    Fixed problem of getting stuck in dead ends
+
+[33mcommit c7cc9e600621da2db1d4c11dc41df0f88662aadb[m
+Author: StefanBryda <stefan.bryda@student.nhlstenden.com>
+Date:   Tue Mar 25 15:47:24 2025 +0100
+
+    First successful run throgh the maze
+
+[33mcommit 82896eb5b91047b1a791f67581c1983b8cb0fe9e[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: StefanBryda <stefan.bryda@student.nhlstenden.com>
+Date:   Tue Mar 25 14:56:42 2025 +0100
+
+    Base code for phisical maze
+
+[33mcommit df8a33069e8d56d9797400b7d084f8e1c688ea49[m[33m ([m[1;31morigin/team3[m[33m, [m[1;31morigin/team2[m[33m)[m
+Author: Eliza Horvath <eliza.horvath@student.nhlstenden.com>
+Date:   Fri Mar 21 10:44:14 2025 +0100
+
+    Added folders for teams
+
+[33mcommit 37211b59c19e1bcf91222ec70fa11bc43a526a11[m
+Author: Eliza Horváth <eliza.horvath@student.nhlstenden.com>
+Date:   Fri Mar 21 10:20:48 2025 +0100
+
+    Update README.md
+    
+    added information about the team
+
+[33mcommit 13cdf9fd443673ee4881767c98c21828fa13153e[m
+Author: Eliza Horváth <eliza.horvath@student.nhlstenden.com>
+Date:   Thu Mar 20 10:48:20 2025 +0100
+
+    Initial commit

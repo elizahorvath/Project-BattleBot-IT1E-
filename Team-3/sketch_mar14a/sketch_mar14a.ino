@@ -1,3 +1,8 @@
+//################################
+//#############bbnoEC#############
+//##########Maze runner###########
+//################################
+
 const int MOTOR_A1       = 9; //Left motor backword
 const int MOTOR_A2       = 6; //Left motor forword
 const int MOTOR_B1       = 5; //Right motor backword
@@ -152,7 +157,7 @@ int getDecision(float right, float left, float front)
         return 5;
       }
 
-      if(right > 9)//correct to right
+      if(right > 8)//correct to right
       {
         return 6;
       }
@@ -165,7 +170,7 @@ int getDecision(float right, float left, float front)
 
     
 
-    if(front <= 20 && left <= 15)//go back
+    if(front <= 18 && left <= 15)//go back
     {
       return 4;
     }
@@ -223,29 +228,25 @@ void loop() {
   float leftSonar;
   float frontSonar;
   float timer;
-  int turn90 = 17;
+  int turn90millisRight = 759;
+  int turn90millisLeft = 720;
 
-  // unsigned static long sonarTimer;
-  // if(millis() - sonarTimer > 800)
-  // {
-    rightSonar = sonar(RIGHT_SONAR);
-    leftSonar = sonar(LEFT_SONAR);
-    frontSonar = sonar(FRONT_SONAR);
-    //sonarTimer = millis();
-  //}
-
-  Serial.print("Right:");
-  Serial.println(rightSonar);
-  Serial.print("Left:");
-  Serial.println(leftSonar);
-  Serial.print("Front:");
-  Serial.println(frontSonar);
+  rightSonar = sonar(RIGHT_SONAR);
+  leftSonar = sonar(LEFT_SONAR);
+  frontSonar = sonar(FRONT_SONAR);
+    
+  // Serial.print("Right:");
+  // Serial.println(rightSonar);
+  // Serial.print("Left:");
+  // Serial.println(leftSonar);
+  // Serial.print("Front:");
+  // Serial.println(frontSonar);
 
   switch(getDecision(rightSonar, leftSonar, frontSonar))
   {
     case 1: //turn right
     timer = millis();
-    while(millis() - timer < 300)
+    while(millis() - timer < 400)
       {
         goForwardR(10);
         goForwardL(10);
@@ -253,20 +254,17 @@ void loop() {
         goBackwardL(0);
       }
 
-    _countFractionR = 0;
-    _countFractionL = 0;
-    while(_countFractionL < turn90)
-    {
-      goForwardR(0);
-      goForwardL(20);
-      rotationsR();
-      rotationsL();
-      goBackwardR(0);
-      goBackwardL(0);
-    }
+    timer = millis();
+    while(millis() - timer < turn90millisRight)
+      {
+        goForwardR(0);
+        goForwardL(20);
+        goBackwardR(0);
+        goBackwardL(0);
+      }
 
     timer = millis();
-      while(millis() - timer < 600)
+      while(millis() - timer < 400)
       {
         goForwardR(10);
         goForwardL(10);
@@ -289,63 +287,65 @@ void loop() {
     break;
 
     case 3: //turn left
-    _countFractionR = 0;
-    _countFractionL = 0;
-    while(_countFractionR < turn90)
+    timer = millis();
+    while(millis() - timer < turn90millisLeft)
     {
       goForwardR(20);
-      rotationsR();
-      rotationsL();
       goForwardL(0);
       goBackwardR(0);
       goBackwardL(0);
     }
 
     timer = millis();
-      while(millis() - timer < 600)
-      {
-        goForwardR(10);
-        goForwardL(10);
-        goBackwardR(0);
-        goBackwardL(0);
-      }
+    while(millis() - timer < 600)
+    {
+      goForwardR(10);
+      goForwardL(10);
+      goBackwardR(0);
+      goBackwardL(0);
+    }
 
     break;
 
     case 4: //go back
-    _countFractionR = 0;
-    _countFractionL = 0;
-    while(_countFractionL < turn90)
+    timer = millis();
+    while(millis() - timer < 800)
     {
       goForwardR(0);
-      rotationsL();
       goForwardL(0);
       goBackwardR(0);
       goBackwardL(20);
     }
 
-    _countFractionR = 0;
-    _countFractionL = 0;
-    while(_countFractionR < turn90)
+    timer = millis();
+    while(millis() - timer < 800)
     {
       goForwardR(20);
-      rotationsR();
       goForwardL(0);
       goBackwardR(0);
       goBackwardL(0);
+    }
+
+    timer = millis();
+    while(millis() - timer < 700)
+    {
+      goForwardR(0);
+      goForwardL(0);
+      goBackwardR(10);
+      goBackwardL(10);
     }
     
     break;
 
     case 5: //correct to left
     goForwardR(20);
-    goForwardL(5);
+    goForwardL(10);
     goBackwardR(0);
     goBackwardL(0);
     break;
 
     case 6: //correct to right
-    goForwardR(5);
+    goForwardR(10);
     goForwardL(20);
     goBackwardR(0);
     goBackwardL(0);
