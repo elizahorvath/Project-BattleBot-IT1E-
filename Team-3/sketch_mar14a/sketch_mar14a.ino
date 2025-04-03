@@ -3,6 +3,9 @@
 //##########Maze runner###########
 //################################
 
+const int GRIPPER       = 10;//Gripper control pin
+const int GRIPPER_OPEN  = 1800;//Amount of microsecounds for which GRIPPER pin should be high in order to open it
+const int GRIPPER_CLOSE = 1100;//Amount of microsecounds for which GRIPPER pin should be high in order to close it
 const int MOTOR_A1       = 9; //Left motor backword
 const int MOTOR_A2       = 6; //Left motor forword
 const int MOTOR_B1       = 5; //Right motor backword
@@ -20,6 +23,11 @@ int _countFractionL = 0;
 //States of the sensors
 bool _stateR = 0;
 bool _stateL = 0;
+
+bool _waitForStart;
+bool _startSequence;
+bool _maze;
+bool _endSequence;
 
 //returns distance from the closest object in cm
 float sonar(int sonar[2]){
@@ -150,14 +158,14 @@ int getDecision(float right, float left, float front)
       return 3;
     }
 
-    if(front > 10)
+    if(front > 15)
     {
-      if(right < 6)//correct to left
+      if(right < 5)//correct to left
       {
         return 5;
       }
 
-      if(right > 8)//correct to right
+      if(right > 7)//correct to right
       {
         return 6;
       }
@@ -168,14 +176,35 @@ int getDecision(float right, float left, float front)
       }
     }
 
-    
-
-    if(front <= 18 && left <= 15)//go back
+    if(front <= 8 && left <= 15)//go back
     {
       return 4;
     }
+  } 
+}
+
+//Sets the position of gripper servo
+void gripper(int state)
+{
+  static unsigned long servoTimer;
+  static int lastState;
+  if(micros() > servoTimer < 20000)
+  {
+    if(state > 0)
+    {
+      lastState = state;
+    }
+
+    else
+    {
+      state = lastState;
+    }
+
+    digitalWrite(GRIPPER, HIGH);
+    delayMicroseconds(state);
+    digitalWrite(GRIPPER, LOW);
+    servoTimer = millis() + 20;
   }
-  
 }
 
 void setup() {
@@ -204,6 +233,11 @@ void setup() {
 
   Serial.begin(9600);
 
+  _startSequence = 0;
+  _maze = 0;
+  _endSequence = 0;
+  _waitForStart = 1;
+
   if( digitalRead(SENSOR_A) == HIGH )
   {
     _stateL = 1;
@@ -227,43 +261,83 @@ void loop() {
   float rightSonar;
   float leftSonar;
   float frontSonar;
-  float timer;
-  int turn90millisRight = 759;
+  long timer;
+  int turn90millisRight = 800;
   int turn90millisLeft = 720;
-
-  rightSonar = sonar(RIGHT_SONAR);
-  leftSonar = sonar(LEFT_SONAR);
-  frontSonar = sonar(FRONT_SONAR);
-    
-  // Serial.print("Right:");
-  // Serial.println(rightSonar);
-  // Serial.print("Left:");
-  // Serial.println(leftSonar);
-  // Serial.print("Front:");
-  // Serial.println(frontSonar);
-
-  switch(getDecision(rightSonar, leftSonar, frontSonar))
+  
+  if(_waitForStart == 1)
   {
-    case 1: //turn right
+    gripper(GRIPPER_OPEN);
+    frontSonar = 10000000000;
+    if(millis() - timer > 1000)
+    {
+      frontSonar = sonar(FRONT_SONAR);
+      timer = millis();
+    }
+
+    if(frontSonar < 38)
+    {
+      _waitForStart = 0;
+      _startSequence = 1;
+    }
+  }
+  
+  if(_startSequence == 1)
+  {
+    delay(1000);
+    
     timer = millis();
-    while(millis() - timer < 400)
-      {
-        goForwardR(10);
-        goForwardL(10);
-        goBackwardR(0);
-        goBackwardL(0);
-      }
+    while(millis() - timer < 1580)
+    {
+      gripper(GRIPPER_OPEN);
+      goForwardR(10);
+      goForwardL(12);
+      goBackwardR(0);
+      goBackwardL(0);
+    }
 
     timer = millis();
-    while(millis() - timer < turn90millisRight)
-      {
-        goForwardR(0);
-        goForwardL(20);
-        goBackwardR(0);
-        goBackwardL(0);
-      }
+    while(millis() - timer < turn90millisLeft)
+    {
+      gripper(GRIPPER_CLOSE);
+      goForwardR(20);
+      goForwardL(0);
+      goBackwardR(0);
+      goBackwardL(0);
+    }
 
     timer = millis();
+    while(millis() - timer < 1300)
+    {
+      gripper(GRIPPER_CLOSE);
+      goForwardR(10);
+      goForwardL(10);
+      goBackwardR(0);
+      goBackwardL(0);
+    }
+
+    _startSequence = 0;
+    _maze = 1;
+  }
+
+  if(_maze == 1)
+  {
+    gripper(GRIPPER_CLOSE);
+    rightSonar = sonar(RIGHT_SONAR);
+    leftSonar = sonar(LEFT_SONAR);
+    frontSonar = sonar(FRONT_SONAR);
+      
+    // Serial.print("Right:");
+    // Serial.println(rightSonar);
+    // Serial.print("Left:");
+    // Serial.println(leftSonar);
+    // Serial.print("Front:");
+    // Serial.println(frontSonar);
+
+    switch(getDecision(rightSonar, leftSonar, frontSonar))
+    {
+      case 1: //turn right
+      timer = millis();
       while(millis() - timer < 400)
       {
         goForwardR(10);
@@ -272,83 +346,102 @@ void loop() {
         goBackwardL(0);
       }
 
-    break;
+      gripper(GRIPPER_CLOSE);
+      timer = millis();
+      while(millis() - timer < turn90millisRight)
+      {
+        goForwardR(0);
+        goForwardL(20);
+        goBackwardR(0);
+        goBackwardL(0);
+      }
 
-    case 2: //forward
-    timer = millis();
-      while(millis() - timer < 100)
+      gripper(GRIPPER_CLOSE);
+      timer = millis();
+      while(millis() - timer < 300)
       {
         goForwardR(10);
         goForwardL(10);
         goBackwardR(0);
         goBackwardL(0);
       }
-      
-    break;
 
-    case 3: //turn left
-    timer = millis();
-    while(millis() - timer < turn90millisLeft)
-    {
-      goForwardR(20);
-      goForwardL(0);
-      goBackwardR(0);
-      goBackwardL(0);
-    }
+      break;
 
-    timer = millis();
-    while(millis() - timer < 600)
-    {
+      case 2: //forward
       goForwardR(10);
       goForwardL(10);
       goBackwardR(0);
       goBackwardL(0);
-    }
+      break;
 
-    break;
+      case 3: //turn left
+      timer = millis();
+      while(millis() - timer < turn90millisLeft)
+      {
+        goForwardR(20);
+        goForwardL(0);
+        goBackwardR(0);
+        goBackwardL(0);
+      }
 
-    case 4: //go back
-    timer = millis();
-    while(millis() - timer < 800)
-    {
-      goForwardR(0);
-      goForwardL(0);
-      goBackwardR(0);
-      goBackwardL(20);
-    }
+      gripper(GRIPPER_CLOSE);
+      timer = millis();
+      while(millis() - timer < 600)
+      {
+        goForwardR(10);
+        goForwardL(10);
+        goBackwardR(0);
+        goBackwardL(0);
+      }
 
-    timer = millis();
-    while(millis() - timer < 800)
-    {
+      break;
+
+      case 4: //go back
+      timer = millis();
+      while(millis() - timer < 800)
+      {
+        goForwardR(0);
+        goForwardL(0);
+        goBackwardR(0);
+        goBackwardL(20);
+      }
+
+      gripper(GRIPPER_CLOSE);
+      timer = millis();
+      while(millis() - timer < 900)
+      {
+        goForwardR(20);
+        goForwardL(0);
+        goBackwardR(0);
+        goBackwardL(0);
+      }
+
+      gripper(GRIPPER_CLOSE);
+      timer = millis();
+      while(millis() - timer < 700)
+      {
+        goForwardR(0);
+        goForwardL(0);
+        goBackwardR(10);
+        goBackwardL(10);
+      }
+      
+      break;
+
+      case 5: //correct to left
       goForwardR(20);
-      goForwardL(0);
+      goForwardL(10);
       goBackwardR(0);
       goBackwardL(0);
+      break;
+
+      case 6: //correct to right
+      goForwardR(10);
+      goForwardL(20);
+      goBackwardR(0);
+      goBackwardL(0);
+      break;
     }
-
-    timer = millis();
-    while(millis() - timer < 700)
-    {
-      goForwardR(0);
-      goForwardL(0);
-      goBackwardR(10);
-      goBackwardL(10);
-    }
-    
-    break;
-
-    case 5: //correct to left
-    goForwardR(20);
-    goForwardL(10);
-    goBackwardR(0);
-    goBackwardL(0);
-    break;
-
-    case 6: //correct to right
-    goForwardR(10);
-    goForwardL(20);
-    goBackwardR(0);
-    goBackwardL(0);
-    break;
   }
 }
