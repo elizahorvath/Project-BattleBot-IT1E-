@@ -2,6 +2,7 @@
 //#############bbnoEC#############
 //##########Maze runner###########
 //################################
+#include <Adafruit_NeoPixel.h>
 
 const int GRIPPER       = 10;//Gripper control pin
 const int GRIPPER_OPEN  = 1800;//Amount of microsecounds for which GRIPPER pin should be high in order to open it
@@ -15,6 +16,8 @@ const int SENSOR_B       = 7; //Right rotation sensor
 const int FRONT_SONAR[2] = {12, 11}; //Trigger and echo pins for front sonar
 const int RIGHT_SONAR[2] = {2, 13}; //Trigger and echo pins for front sonar
 const int LEFT_SONAR[2]  = {A0, A1}; //Trigger and echo pins for front sonar
+const int NEOPIXEL_PIN    = A2; 
+const int NUM_PIXELS       = 4;
 
 //Amount of signals received from rotation sensor. Every signal indicates 1/20 of full rotation of the wheel
 int _countFractionR = 0;
@@ -24,10 +27,14 @@ int _countFractionL = 0;
 bool _stateR = 0;
 bool _stateL = 0;
 
+unsigned long previousMillis = 0;
+
 bool _waitForStart;
 bool _startSequence;
 bool _maze;
 bool _endSequence;
+
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(4, NEOPIXEL_PIN, NEO_RGB + NEO_KHZ800);
 
 //returns distance from the closest object in cm
 float sonar(int sonar[2]){
@@ -207,6 +214,16 @@ void gripper(int state)
   }
 }
 
+void setAllLights(int r, int g, int b)
+{
+  for(int i = 0; i <= NUM_PIXELS; i++)
+  {
+    pixels.setPixelColor(i, pixels.Color(r, g, b));
+  }
+
+  pixels.show();
+}
+
 void setup() {
   //Set motors to output
   pinMode(MOTOR_A1, OUTPUT);
@@ -220,7 +237,6 @@ void setup() {
   pinMode(FRONT_SONAR[1], INPUT);
   pinMode(LEFT_SONAR[1], INPUT);
 
-
   //Set rotation sensors to input
   pinMode(SENSOR_A, INPUT);
   pinMode(SENSOR_B, INPUT);
@@ -232,6 +248,8 @@ void setup() {
   analogWrite(MOTOR_B2, 0);
 
   Serial.begin(9600);
+
+  pixels.begin();
 
   _startSequence = 0;
   _maze = 0;
@@ -255,6 +273,8 @@ void setup() {
   {
     _stateR = 0;
   }
+
+  setAllLights(255, 0, 0);
 }
 
 void loop() {
@@ -284,6 +304,7 @@ void loop() {
   
   if(_startSequence == 1)
   {
+    setAllLights(0, 0, 255);
     delay(1000);
     
     timer = millis();
@@ -304,6 +325,8 @@ void loop() {
       goForwardL(0);
       goBackwardR(0);
       goBackwardL(0);
+
+      setAllLights(0, 255, 0);
     }
 
     timer = millis();
@@ -337,6 +360,7 @@ void loop() {
     switch(getDecision(rightSonar, leftSonar, frontSonar))
     {
       case 1: //turn right
+      setAllLights(255, 255, 0);
       timer = millis();
       while(millis() - timer < 400)
       {
@@ -369,6 +393,7 @@ void loop() {
       break;
 
       case 2: //forward
+      setAllLights(255, 165, 0);
       goForwardR(10);
       goForwardL(10);
       goBackwardR(0);
@@ -376,6 +401,7 @@ void loop() {
       break;
 
       case 3: //turn left
+      setAllLights(255, 0, 255);
       timer = millis();
       while(millis() - timer < turn90millisLeft)
       {
@@ -398,6 +424,7 @@ void loop() {
       break;
 
       case 4: //go back
+      setAllLights(165, 0, 0);
       timer = millis();
       while(millis() - timer < 800)
       {
