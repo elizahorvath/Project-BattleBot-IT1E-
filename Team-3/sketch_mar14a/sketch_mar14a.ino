@@ -4,9 +4,9 @@
 //################################
 #include <Adafruit_NeoPixel.h>
 
-const int GRIPPER       = 10;//Gripper control pin
-const int GRIPPER_OPEN  = 1800;//Amount of microsecounds for which GRIPPER pin should be high in order to open it
-const int GRIPPER_CLOSE = 1100;//Amount of microsecounds for which GRIPPER pin should be high in order to close it
+const int GRIPPER        = 10;//Gripper control pin
+const int GRIPPER_OPEN   = 1800;//Amount of microsecounds for which GRIPPER pin should be high in order to open it
+const int GRIPPER_CLOSE  = 1100;//Amount of microsecounds for which GRIPPER pin should be high in order to close it
 const int MOTOR_A1       = 9; //Left motor backword
 const int MOTOR_A2       = 6; //Left motor forword
 const int MOTOR_B1       = 5; //Right motor backword
@@ -16,8 +16,9 @@ const int SENSOR_B       = 7; //Right rotation sensor
 const int FRONT_SONAR[2] = {12, 11}; //Trigger and echo pins for front sonar
 const int RIGHT_SONAR[2] = {2, 13}; //Trigger and echo pins for front sonar
 const int LEFT_SONAR[2]  = {A0, A1}; //Trigger and echo pins for front sonar
-const int NEOPIXEL_PIN    = A2; 
-const int NUM_PIXELS       = 4;
+const int LINE_SENSOR[3] = {A3, A4, A5}; //Three line sensors used to find the ending spot
+const int NEOPIXEL_PIN   = A2; 
+const int NUM_PIXELS     = 4;
 
 //Amount of signals received from rotation sensor. Every signal indicates 1/20 of full rotation of the wheel
 int _countFractionR = 0;
@@ -27,16 +28,15 @@ int _countFractionL = 0;
 bool _stateR = 0;
 bool _stateL = 0;
 
-unsigned long previousMillis = 0;
-
 bool _waitForStart;
 bool _startSequence;
 bool _maze;
 bool _endSequence;
+bool _isFirstSonarCheckDone;
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(4, NEOPIXEL_PIN, NEO_RGB + NEO_KHZ800);
 
-//returns distance from the closest object in cm
+// returns distance from the closest object in cm
 float sonar(int sonar[2]){
   digitalWrite(sonar[0], LOW);
   delayMicroseconds(2);
@@ -48,7 +48,7 @@ float sonar(int sonar[2]){
   return 0.034 * duration / 2;
 }
 
-//Turns right motor goes forwards
+// turns right motor forwards
 void goForwardR( int pwm )
 {
   if( pwm == 0 )
@@ -65,7 +65,7 @@ void goForwardR( int pwm )
       
 }
 
-//turns left motor forward
+// turns left motor forward
 void goForwardL( int pwm )
 {
   if( pwm == 0 )
@@ -81,7 +81,7 @@ void goForwardL( int pwm )
   }
 }
 
-//turns left motor backward
+// turns left motor backward
 void goBackwardL( int pwm )
 {
   if( pwm == 0 )
@@ -97,7 +97,7 @@ void goBackwardL( int pwm )
   }
 }
 
-//turns right motor backward
+// turns right motor backward
 void goBackwardR( int pwm )
 {
   if( pwm == 0 )
@@ -113,7 +113,7 @@ void goBackwardR( int pwm )
   }
 }
 
-//Stops all the motors
+// Stops all the motors
 void stopAll()
 {
   analogWrite(MOTOR_A1, 0);
@@ -122,35 +122,7 @@ void stopAll()
   analogWrite(MOTOR_B2, 0);
 }
 
-//counts the amount of rotations on right motor
-void rotationsR()
-{
-  if( digitalRead(SENSOR_A) == HIGH && _stateR == 0 )
-  {
-    _stateR = 1;
-    _countFractionR++;
-  }
-  if( digitalRead(SENSOR_A) == LOW && _stateR == 1 )
-  {
-    _stateR = 0;
-  }
-}
-
-//counts the amount of rotations on left motor
-void rotationsL()
-{
-    if( digitalRead(SENSOR_B) == HIGH && _stateL == 0 )
-    {
-      _stateL = 1;
-      _countFractionL++;
-    }
-    if( digitalRead(SENSOR_B) == LOW && _stateL == 1 )
-    {
-      _stateL = 0;
-    }
-    
-}
-
+// The logic used to solve the maze. It outputs an int which corresponds to different actions based on data from ultrasonic sensors
 int getDecision(float right, float left, float front)
 {
   if(right > 18) //turn right
@@ -167,12 +139,12 @@ int getDecision(float right, float left, float front)
 
     if(front > 15)
     {
-      if(right < 5)//correct to left
+      if(right < 7)//correct to left
       {
         return 5;
       }
 
-      if(right > 7)//correct to right
+      if(right > 9)//correct to right
       {
         return 6;
       }
@@ -214,6 +186,7 @@ void gripper(int state)
   }
 }
 
+//Sets the colors of Neopixels
 void setAllLights(int r, int g, int b)
 {
   for(int i = 0; i <= NUM_PIXELS; i++)
@@ -222,6 +195,12 @@ void setAllLights(int r, int g, int b)
   }
 
   pixels.show();
+}
+
+//Calculates the edge value of line sensors between white and black surface
+int getEdgeValue(int sensorMin, int sensorMax)
+{
+  return sensorMin + sensorMax / 2;
 }
 
 void setup() {
@@ -248,75 +227,103 @@ void setup() {
   analogWrite(MOTOR_B2, 0);
 
   Serial.begin(9600);
-
   pixels.begin();
 
   _startSequence = 0;
   _maze = 0;
   _endSequence = 0;
   _waitForStart = 1;
-
-  if( digitalRead(SENSOR_A) == HIGH )
-  {
-    _stateL = 1;
-  }
-  else
-  {
-    _stateL = 0;
-  }
-
-  if( digitalRead(SENSOR_B) == HIGH )
-  {
-    _stateR = 1;
-  }
-  else
-  {
-    _stateR = 0;
-  }
+  _isFirstSonarCheckDone = false;
 
   setAllLights(255, 0, 0);
 }
 
 void loop() {
-  float rightSonar;
-  float leftSonar;
-  float frontSonar;
-  long timer;
-  int turn90millisRight = 800;
-  int turn90millisLeft = 720;
+  float rightSonar; //Distance measured by right ultrasonic sensor
+  float leftSonar; //Distance measured by left ultrasonic sensor
+  float frontSonar; //Distance measured by front ultrasonic sensor
+  long timer; // Timer used for timing different movements in the maze using millis() function
+  int turn90millisRight = 800; //the exact amount of milliseconds needed for left wheel to be on at speed 10 to make 90deg turn right
+  int turn90millisLeft  = 720; //the exact amount of milliseconds needed for right wheel to be on at speed 10 to make 90deg turn left
+  int edgeValue; //Stores the edge value after calibration
   
+  // Standby
   if(_waitForStart == 1)
   {
+    bool isObjectReal = false; //Used to validate if signal received by front sonar is a real object in front of the robot or noise from another robot
+    int threshold = 30; //The minimal distance from the robot that the object must be in in order to activate the starting sequence
+    
+    //frontSonar gets updated once every second
     gripper(GRIPPER_OPEN);
-    frontSonar = 10000000000;
-    if(millis() - timer > 1000)
+    if(millis() > timer)
     {
+      _isFirstSonarCheckDone = true;
       frontSonar = sonar(FRONT_SONAR);
-      timer = millis();
+      timer = millis() + 1000;
     }
 
-    if(frontSonar < 38)
+    //In case that frontSonar doesn't update in time when arduino is turned on the value is set to 100
+    if(_isFirstSonarCheckDone == false)
+    {
+      frontSonar = 100;
+    }
+
+    // If robot detects an object in front of itself, it runns three checks in different 
+    // intervals to check if it is a real object or noise from another robot
+    if(frontSonar < threshold && isObjectReal == false)
+    {
+      delay(50);
+      if(sonar(FRONT_SONAR) < threshold)
+      {
+        delay(70);
+        if(sonar(FRONT_SONAR) < threshold)
+        {
+          isObjectReal = true;
+        }
+      }
+    }
+
+    // If object is real the robot starts the starting sequence
+    if(isObjectReal)
     {
       _waitForStart = 0;
       _startSequence = 1;
     }
   }
   
+  // Starting sequence
   if(_startSequence == 1)
   {
     setAllLights(0, 0, 255);
-    delay(1000);
+    delay(1000); // Robot waits 1 second for the previous robot to back up before starting
+    int sensorMin; // Stores the minimal value read by line sensor during calibration
+    int sensorMax; // Stores the maximal value read by line sensor during calibration
     
+    // Robot goes forward towards the object and at the same time it collects the maximal and 
+    // minimal values of line sensor by passing by three black strips on the floor
     timer = millis();
-    while(millis() - timer < 1580)
+    while(millis() - timer < 1500)
     {
       gripper(GRIPPER_OPEN);
       goForwardR(10);
       goForwardL(12);
       goBackwardR(0);
       goBackwardL(0);
+      if(analogRead(LINE_SENSOR[1]) < sensorMin)
+      {
+        sensorMin = analogRead(LINE_SENSOR[1]);
+      }
+
+      if(analogRead(LINE_SENSOR[1]) > sensorMax)
+      {
+        sensorMax = analogRead(LINE_SENSOR[1]);
+      }
     }
 
+    // The edge value is calculated based on data colected during calibration
+    edgeValue = getEdgeValue(sensorMin, sensorMax);
+
+    // Ropot closes the gripper on the object and turns 90 degrees left
     timer = millis();
     while(millis() - timer < turn90millisLeft)
     {
@@ -329,6 +336,7 @@ void loop() {
       setAllLights(0, 255, 0);
     }
 
+    // Robot goes forwards to the entrance of the maze
     timer = millis();
     while(millis() - timer < 1300)
     {
@@ -342,21 +350,37 @@ void loop() {
     _startSequence = 0;
     _maze = 1;
   }
+  
+  // If robot detects the black sqere on the flor it starts the end sequence
+  if(_maze == 1 && (analogRead(LINE_SENSOR[0]) > edgeValue || analogRead(LINE_SENSOR[1]) > edgeValue || analogRead(LINE_SENSOR[2]) > edgeValue))
+  {
+    timer = millis();
+    while(millis() - timer < 200)
+    {
+      goForwardR(10);
+      goForwardL(10);
+      goBackwardR(0);
+      goBackwardL(0);
+    }
 
+    if(analogRead(LINE_SENSOR[0]) > edgeValue || analogRead(LINE_SENSOR[1]) > edgeValue || analogRead(LINE_SENSOR[2]) > edgeValue)
+    {
+      _maze = 0;
+      _endSequence = 1;
+    }
+  }
+
+  // Solving the maze with right hand rule
   if(_maze == 1)
   {
     gripper(GRIPPER_CLOSE);
+
+    // Robot stores distances messured by every ultrasonic sensor 
     rightSonar = sonar(RIGHT_SONAR);
     leftSonar = sonar(LEFT_SONAR);
     frontSonar = sonar(FRONT_SONAR);
-      
-    // Serial.print("Right:");
-    // Serial.println(rightSonar);
-    // Serial.print("Left:");
-    // Serial.println(leftSonar);
-    // Serial.print("Front:");
-    // Serial.println(frontSonar);
 
+    // Based on the positions of walls around the robot it decides on what move it should do
     switch(getDecision(rightSonar, leftSonar, frontSonar))
     {
       case 1: //turn right
@@ -470,5 +494,26 @@ void loop() {
       goBackwardL(0);
       break;
     }
+  }
+
+  // End sequence
+  if(_endSequence == 1)
+  {
+    stopAll();
+    gripper(GRIPPER_OPEN);
+
+    // After droping the object robot backs
+    timer = millis();
+    while(millis() - timer < 700)
+    {
+      goForwardR(0);
+      goForwardL(0);
+      goBackwardR(10);
+      goBackwardL(10);
+    }
+
+    // After that the robot stops everything
+    stopAll();
+    _endSequence = 0;
   }
 }
