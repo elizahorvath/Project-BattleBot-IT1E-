@@ -1,4 +1,4 @@
-// Define motor and servo pins
+// Motor, servo and sonar pins
 #define SERVO_PIN            4
 #define MOTOR_A_IN1_PIN     10    // LEFT motor - FORWARD
 #define MOTOR_B_IN1_PIN      6    // RIGHT motor - FORWARD
@@ -15,8 +15,9 @@
 int sensors[] = {A0, A1, A2, A3, A4, A5, A6, A7};
 
 // PD control parameters
-const float _Kp = 0.6; 
-const float _Kd = 0.5;
+const float _Kp = 0.7;
+const float _Kd = 0.6;
+
 const int _baseSpeed = 250; 
 
 // State variables
@@ -31,37 +32,43 @@ bool movingBackward = false;
 unsigned long backwardStartTime = 0;
 bool stopRobot = false;
 
-// Object avoidance variables
-// bool isAvoiding = false;
-// unsigned long avoidStartTime = 0;
-
 void setup() {
   pinMode(SERVO_PIN, OUTPUT);
+
   pinMode(MOTOR_A_IN1_PIN, OUTPUT);
   pinMode(MOTOR_B_IN1_PIN, OUTPUT);
+
+  // Giving the motors 0 power initially;
+  analogWrite(MOTOR_A_IN1_PIN, 0);
+  analogWrite(MOTOR_B_IN1_PIN, 0);
+  analogWrite(MOTOR_A_IN2_PIN, 0);
+  analogWrite(MOTOR_B_IN2_PIN, 0);
+
+  // Ultrasonic sensors roles
   pinMode(TRIGGER_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   
-  stopMotors();
   digitalWrite(SERVO_PIN, LOW);
-  Serial.begin(9600);
+  stopMotors();
 }
 
 void loop() {
-  if (stopRobot) return;
+  if (stopRobot) {
+    return;  // If the robot has completed the track once, stop
+  }
 
-  long distance = getDistance();
+  long distance = getDistance();  
   unsigned long now = millis();
 
-  // State machine
+  // Start the robot when the flag is lifted
   if (distance > 20 && state == 0) {
     timer = now;
     state = 1;
   }
   
-  // Move forward for 1 second
+  // Move forward for 1200 millisecond
   if (state == 1) {
-    if (now - timer < 1000) {
+    if (now - timer < 1200) {
       moveForward(230, 255);
     } else {
       stopMotors();
@@ -80,9 +87,9 @@ void loop() {
     }
   }
 
-  // Turn left for 900ms
+  // Turn left for 800ms
   if (state == 3) {
-    if (now - timer < 900) {
+    if (now - timer < 800) {
       moveForward(0, 255);
     } else {
       stopMotors();
@@ -106,7 +113,7 @@ void loop() {
     if (allSensorsBlack()) {
       if (blackStartTime == 0) {
         blackStartTime = now;
-      } else if (now - blackStartTime >= 150) {
+      } else if (now - blackStartTime >= 170) {
         blackCrossCount++;
         if (blackCrossCount == 2 && !movingBackward) {
           gripper(GRIPPER_OPEN);
@@ -147,7 +154,7 @@ void avoidObject() {
   }
 
   // Move forward
-  counter = millis() + 1200;
+  counter = millis() + 1300;
   while (millis() < counter) {
     moveForward(175, 200);
     gripper(GRIPPER_CLOSE);
@@ -208,7 +215,7 @@ void followLine(int leftSensor, int rightSensor, int leftSpeed, int rightSpeed) 
     int lSpeed = constrain(_baseSpeed - correction, 0, leftSpeed);
     int rSpeed = constrain(_baseSpeed + correction, 0, rightSpeed);
     
-    // Apply motor offsets here if calibrated
+    // Setting the speed of the wheels based on the corrections
     analogWrite(MOTOR_A_IN1_PIN, lSpeed);
     analogWrite(MOTOR_B_IN1_PIN, rSpeed);
     
@@ -219,12 +226,12 @@ void followLine(int leftSensor, int rightSensor, int leftSpeed, int rightSpeed) 
 bool allSensorsBlack() {
   int blackCount = 0;
   for (int i = 0; i < 8; i++) {
-    if (analogRead(sensors[i]) > 500) {
+    if (analogRead(sensors[i]) > 600) {
       blackCount++;
     }
   }
 
-  return (blackCount == 8);
+  return (blackCount >= 8);
 }
 
 long getDistance() {
